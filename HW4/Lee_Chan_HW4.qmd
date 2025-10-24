@@ -1,0 +1,519 @@
+---
+title: "HW 4 Missing Data & Model Selection: Data Analysis Problems "
+subtitle: "Advanced Regression (STAT 353-0)"
+author: "Chan Lee"
+pagetitle: "HW 4 Chan Lee"
+date: today
+
+format:
+  html:
+    toc: true
+    toc-depth: 4
+    toc-location: left
+    embed-resources: true
+    code-fold: false
+    link-external-newwindow: true
+    theme: cosmo
+
+execute:
+  warning: false
+
+from: markdown+emoji
+reference-location: margin
+citation-location: margin
+---
+
+::: {.callout-tip icon=false}
+
+## Github Repo Link
+
+https://github.com/stat-353-0-2025-winter/hw-4-mdms-chanlee0716.git
+
+:::
+
+```{r}
+# load package(s)
+library(stats)
+library(MASS)
+library(effects)
+library(car)
+library(ggplot2)
+library(plotly)
+library(mgcv)
+library(mice)
+library(sampleSelection)
+library(AER)
+
+# load datasets
+UN_data <- read.table("data/UnitedNations.txt", header = TRUE, sep = "", stringsAsFactors = TRUE)
+phd_data <- read.table("data/Long-PhDs.txt", header = TRUE, sep = "", stringsAsFactors = TRUE)
+phd_data$fellowship <- as.factor(phd_data$fellowship)
+phd_data$gender <- as.factor(phd_data$gender)
+pitchers_data <- read.table("data/BaseballPitchers.txt", header = TRUE, sep = "", stringsAsFactors = TRUE)
+```
+
+## Data analysis problems
+
+### 1. Exercise D20.1 (MI)
+
+Using the United Nations social-indicators data (in `UnitedNations.txt`), develop a regression model for the response variable female expectation of life. 
+
+Feel free to use whatever explanatory variables in the data set make sense to you and to employ variable transformations, if needed.
+
+(a) Work initially with complete cases, and once you have an apparently satisfactory model, obtain estimates and standard errors of the regression coefficients.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+Explanation of results in part c.
+
+```{r}
+UN_data_complete <- UN_data[complete.cases(UN_data), ] #take only complete cases
+
+# initial model, including all predictors
+UN_data_complete_model <- lm(lifeFemale ~ ., data = UN_data_complete)
+#summary(UN_data_complete_model)
+
+# new model, removing insigifnicant predictors
+UN_data_complete_model_2 <- lm(lifeFemale ~ region + economicActivityFemale + infantMortality, 
+                               data = UN_data_complete)
+summary(UN_data_complete_model_2)
+
+```
+:::
+
+(b) Now redo your analysis in (a) but use multiple imputation.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+Explanation of results in part c.
+
+```{r}
+# Display the missing data pattern in the dataset to see which variables have NA values
+#md.pattern(UN_data)
+
+## Perform multiple imputation to handle missing data using Predictive Mean Matching (pmm)
+## 'm = 5' generates 5 imputed datasets, and 'seed = 123' ensures reproducibility
+imputed_data <- mice(UN_data, m = 5, method = "pmm", seed = 123)
+
+## Provide a summary of the imputed dataset, showing the number of imputed values per variable
+# summary(imputed_data) 
+
+# Extract a fully imputed dataset with missing values replaced
+complete_data <- complete(imputed_data)  
+
+# Run a linear regression model predicting 'lifeFemale' (female life expectancy)
+# using 'region', 'tfr' (total fertility rate), 'infantMortality', and 'economicActivityFemale' as predictors
+model <- lm(lifeFemale ~ region + tfr + infantMortality + economicActivityFemale, 
+            data = complete_data)  
+
+# Display the regression results, including coefficients, standard errors, R-squared, and significance levels
+summary(model)  
+```
+
+:::
+
+(c) Compare these results to those from the complete-case analysis. What do you conclude?
+
+::: {.callout-tip icon="false"}
+## Solution
+
+### Part a's model:
+Using the data that uses only complete cases, the regression model estimates female life 
+expectancy (lifeFemale) based on region, female economic activity, and infant mortality rate. 
+
+- The intercept (78.19, SE = 2.15, p < 2e-16) represents the expected female life expectancy in Africa 
+(the reference region) when all other predictors are held at zero. 
+- Compared to Africa, America 
+(+5.88 years, SE = 1.68, p = 0.0014), Asia (+5.29 years, SE = 1.65, p = 0.0031), 
+Europe (+4.79 years, SE = 2.04, p = 0.0249), and Oceania (+8.87 years, SE = 3.00, p = 0.0058) 
+all show significantly higher female life
+expectancy. 
+- Female economic activity has a small but significant negative effect 
+(-0.08, SE = 0.028, p = 0.0077), suggesting that as more
+women participate in the workforce, female life expectancy slightly declines, 
+possibly reflecting economic hardship or gender disparities in
+healthcare access. 
+- Infant mortality has the strongest negative effect 
+(-0.22 years per infant death per 1,000, SE = 0.020, p < 2.2e-16),
+highlighting that higher infant mortality is strongly associated with lower female 
+life expectancy, likely due to broader healthcare deficiencies. 
+
+The model explains 93.37% of the variance (R² = 0.9337, Adjusted R² = 0.9213), 
+indicating an excellent fit, with a low residual standard error (2.805 years), 
+meaning the predictions are fairly accurate.
+
+### Part b's model:
+
+For our data that uses multiple imputation, The regression model estimates female
+life expectancy (lifeFemale) using region, total fertility rate (tfr), infant
+mortality rate (infantMortality), and female economic activity (economicActivityFemale), 
+based on an imputed dataset. 
+- The intercept (81.11, SE =1.25, p < 2e-16) 
+represents Africa’s baseline life expectancy. 
+- Compared to Africa, life expectancy is significantly higher in America (+3.91 years, SE =
+0.78, p < 0.001), Asia (+3.29, SE = 0.67, p < 0.001), Europe (+2.50, SE = 0.87, 
+p = 0.0045), and Oceania (+2.37, SE = 0.97, p = 0.016). 
+- Higher fertility rates (-1.31 years per child, SE = 0.24, p < 0.001) and infant mortality (-0.20 years
+per infant death per 1,000, SE = 0.011, p < 2e-16) strongly decrease life
+expectancy, emphasizing the role of maternal and child health. 
+- Female economic activity (-0.037, SE = 0.014, p = 0.008) has a small but significant negative
+effect, possibly reflecting systemic inequalities. 
+
+The model explains 92.68% of variance (R² = 0.9268, Adjusted R² = 0.9242) 
+with a low residual standard error (2.995 years), confirming a strong fit (F = 360, p < 2.2e-16).
+
+### Comparison of part a and part b's models:
+Comparing the complete-case and multiple imputation (MI) models, both identify region, 
+infant mortality, and female economic activity as significant predictors of female 
+life expectancy, but the MI model also finds total fertility rate (tfr) significant. 
+The MI model produces smaller standard errors, suggesting more precise estimates due 
+to better data retention. Both models fit well ($R^2$ ~93%), but the MI model slightly 
+improves precision (lower residual SE: 2.995 vs. 2.805). Overall, the MI model is 
+preferred as it reduces bias from missing data and enhances statistical power.
+:::
+
+
+
+### 2. Exercise D20.3 (Selection)
+
+Long (1997) reports a regression in which the response variable is the prestige of the academic departments where PhDs in biochemistry find their first jobs. The data are in the file `Long-PhDs.txt`.
+
+Prestige is measured on a scale that runs from 1.00 to 5.00, and is unavailable for departments without graduate programs and for departments with ratings below 1.00. The explanatory variables include a dummy regressor for gender; the prestige of the department in which the individual obtained his or her PhD; the number of citations received by the individualís mentor; a dummy regressor coding whether or not the individual held a fellowship; the number of articles published by the individual; and the number of citations received by the individual.
+
+Estimate the regression of prestige of first job on the other variables in three ways:
+
+(a) code all of the missing values as 1.00 and perform an OLS regression;
+
+::: {.callout-tip icon="false"}
+## Solution
+
+Results explained in part d.
+
+```{r}
+phd_data_copy1 <- phd_data # create copy of dataset
+phd_data_copy1$job[is.na(phd_data$job)] <- 1.00 # set all NA values to 1.00
+
+# fit regression model to data
+phd_model1 <- lm(job ~ phd + fellowship + citations + gender + mentor, data = phd_data_copy1)
+summary(phd_model1)
+```
+
+:::
+
+(b) treat the missing values as truncated at 1.00 and employ Heckmanís selection-regression model;
+
+::: {.callout-tip icon="false"}
+## Solution
+
+Results explained in part d.
+
+```{r}
+phd_data_copy2 <- phd_data # create copy of dataset
+
+
+# Create a selection indicator: 1 if job > 1.00, 0 otherwise
+phd_data_copy2$selected <- ifelse(!is.na(phd_data_copy2$job) & phd_data_copy2$job > 1.00, 1, 0)
+
+# Fit the Heckman selection-regression model using sampleSelection::selection()
+#    - selection() function requires two formulas:
+#         (a) 'selection' ~ ... for the selection equation
+#         (b) 'outcome'   ~ ... for the outcome (regression) equation
+#    - method = "2step" performs the Heckman two-step estimator
+heckman_model <- selection(
+  # Selection equation: uses the same predictors to determine if job > 1
+  selection = selected ~ phd + fellowship + citations + gender + mentor,
+  
+  # Outcome equation: the prestige rating (job) is modeled by the same regressors
+  outcome   = job ~ phd + fellowship + citations + gender + mentor,
+  
+  # Specify the dataset
+  data = phd_data_copy2,
+  
+  # The default is "ml" (maximum likelihood). "2step" uses the two-step heckman approach.
+  method = "2step"
+)
+
+summary(heckman_model)
+
+```
+:::
+
+(c) treat the missing values as censored and fit the Tobit model.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+Results explained in part d.
+
+```{r}
+# Load required library
+library(censReg)
+
+Long = read.table("data/Long-PhDs.txt", header = TRUE, sep = "", stringsAsFactors = TRUE)
+Long$job[is.na(Long$job)] = 1
+Long$job[Long$job <= 1] = 1
+
+# Fit Tobit regression model (left-censored at 1.00)
+tobit_model <- censReg(job ~ phd + fellowship + citations + gender + mentor, left = 1.00, data = Long)
+
+# Display model summary
+summary(tobit_model)
+```
+
+:::
+
+(d) Compare the estimates and coefficient standard errors obtained by the three approaches. Which of these approaches makes the most substantive sense?
+
+::: {.callout-tip icon="false"}
+## Solution
+
+Based on model selection, namely anova, I only removed the articles variable.
+
+### Part a's model:
+From the results, we see that 
+- when the PhD department has a prestige of zero, the
+student has never held a fellowship, has zero citations, is a female, and when their
+mentor has zero citations, the prestige of their first job is 0.95, with a SE of 0.16 (intercept).
+- Secondly, a one point increase in the student's PhD department's prestige is associated with
+0.27 units of increase in the prestige of their first job, with a SE of 0.05. 
+- Thirdly, holding a fellowship (vs. not holding one) adds roughly 0.24 units to job, 
+indicating moderate precision (SE = 0.09). 
+- Fourthly, each additional citation 
+contributes a 0.0056‐unit increase to the job measure, reflecting a modest but 
+statistically significant effect with a fairly small SE (0.0014).
+- Fifthly, being male (vs. female) is associated with a 0.15‐unit increment in job, 
+but the larger SE (0.09) and marginal p‐value suggest that this estimate is less certain.
+- Lastly, one more citation the mentor receives is associated with a 0.0012‐unit increase in 
+the prestige of the student's first job, with a negligible SE. 
+
+### Part b's model:
+
+From the selection (probit) equation, we see that having more citations and being 
+male significantly increases the chance that a department’s prestige rating exceeds 1.00 (p < 0.01), 
+while holding a fellowship is marginally significant (p = 0.0803) and mentor’s citations 
+have no clear effect. In the outcome equation, only PhD prestige (p < 0.0001) strongly 
+predicts departmental prestige above 1.0, with other variables (fellowship, citations, gender, mentor) 
+failing to reach statistical significance. The inverse Mills ratio (p = 0.701) 
+is likewise not significant, suggesting limited evidence of selection bias once 
+we account for these predictors. Overall, these Heckman two-step results imply 
+that citations and gender shape whether a department’s prestige is observed (>1), 
+but PhD prestige is the main driver of higher ratings among those observed.
+
+
+### Part c's model:
+
+In this Tobit model—censored at 1.0 but with no upper censoring—the PhD prestige 
+(Estimate = 0.30, p < 0.001) emerges as a strong positive predictor of job, while 
+citations has a modest effect (0.0024, p = 0.040). Fellowship, gender, and mentor appear 
+less influential (p > 0.10). The intercept of 1.52 indicates the baseline job prestige 
+for a female with zero citations, no fellowship, and mentor = 0, and the relatively 
+small scale parameter (0.695) suggests moderate residual variability. Overall, the model 
+indicates that higher PhD prestige and having more citations significantly increase 
+departmental prestige above the 1.0 threshold.
+
+### Comparsion:
+```{r}
+compareCoefs(phd_model1, heckman_model, tobit_model)
+```
+The OLS model, which simply omits missing observations, yields a PhD coefficient of
+about 0.27 (SE ≈ 0.05), a fellowship effect of roughly 0.24 (SE ≈ 0.09), and a
+citations effect of 0.0056 (SE ≈ 0.0014), with gender and mentor effects marginally 
+significant. In contrast, the Heckman model—which accounts for selection into the
+observed sample—produces a somewhat larger PhD coefficient (≈ 0.31, SE ≈ 0.06) and
+shows that the selection process (modeled via the probit) finds significant effects of
+citations and gender on selection, although the outcome equation’s estimates for
+fellowship, citations, gender, and mentor are less significant and come with larger
+standard errors. The tobit model, which treats observations as left-censored at 1.0,
+yields a PhD coefficient of approximately 0.32 (SE ≈ 0.064), a fellowship coefficient
+of 0.34 (SE ≈ 0.122), and a citations effect of about 0.0067 (SE ≈ 0.00176), with
+gender significant at the 5% level and mentor remaining non-significant; its intercept
+differs markedly from the other models.
+:::
+
+### 3. Exercise (Bootstrap)
+
+We will now consider the `Boston` housing dataset from the `MASS` package.
+
+```{r}
+#| label: load-boston-data
+
+# load Boston data
+data(Boston, package = "MASS")
+```
+
+Run `??Boston` in condole to see codebook.
+
+(a) Provide an estimate of the population mean of `medv`. Call this estimate $\hat{\mu}$.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+hat_mu <- mean(Boston$medv)
+
+sprintf("We get that the estimate of pop mean of medv is %f",hat_mu)
+```
+
+:::
+
+(b) What is the formula for the standard error of an estimate of the mean? Use this to provide an estimate of the standard error of $\hat{\mu}$ in (a).
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+SE <- sd(Boston$medv) / sqrt(length(Boston$medv))
+sprintf("The SE of the estimate of the mean estimate is %f", SE)
+```
+
+:::
+
+(c) Estimate this standard error using the bootstrap. How does this compare to the answer from (b)?
+
+::: {.callout-tip icon="false"}
+## Solution
+
+This is practically the same as the SE from part b.
+
+```{r}
+# Set the number of bootstrap replications
+B <- 1000
+n <- nrow(Boston)
+
+# Use replicate() to perform the bootstrap
+boot_means <- replicate(B, {
+  # Draw a bootstrap sample with replacement
+  sample_data <- Boston[sample(1:n, size = n, replace = TRUE), ]
+  # Compute the mean of the medv variable in this bootstrap sample
+  mean(sample_data$medv)
+})
+
+# Estimate the standard error as the standard deviation of the bootstrap means
+bootstrap_se <- sd(boot_means)
+bootstrap_se
+```
+
+:::
+
+(d) Provide an estimate of $\hat{\mu}_{med}$, the  median value of `medv` in the population.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+print("The median value of medv is:")
+print(median(Boston$medv))
+```
+
+:::
+
+(e) Estimate the standard error of $\hat{\mu}_{med}$. Notice that there is no simple formula to do this, so instead use the bootstrap. Comment on your findings.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+The bootstrap analysis indicates that the median medv value is 21.2, and the
+bootstrap-estimated standard error quantifies the variability of this estimate across
+repeated samples, reflecting its precision. A small standard error would imply that the
+median remains stable across different samples, while a larger value would suggest more
+variability. This robust approach, which is particularly useful for medians that are
+less affected by outliers, also allows us to construct confidence intervals to further
+assess the reliability of the 21.2 estimate.
+```{r}
+# Set the number of bootstrap replications
+B <- 1000
+n <- nrow(Boston)
+
+# Perform the bootstrap procedure for the median
+boot_medians <- replicate(B, {
+  # Draw a bootstrap sample with replacement
+  sample_data <- Boston[sample(1:n, size = n, replace = TRUE), ]
+  # Compute the median of the medv variable in this sample
+  median(sample_data$medv)
+})
+
+# Estimate the standard error as the standard deviation of the bootstrap medians
+bootstrap_se_median <- sd(boot_medians)
+
+# Print the estimated standard error of the median
+bootstrap_se_median
+
+```
+
+:::
+
+### 4. Exercise D22.1 (Model Selection)
+
+The data file `BaseballPitchers.txt` contains salary and performance data for major-league baseball pitchers at the start of the 1987 season. The data are analogous to those for baseball hitters used as an example in the chapter. Be sure to explore the data and think about variables to use as predictors before specifying candidate models.
+
+(a) Employing one or more of the methods of model selection described in the text, develop a regression model to predict pitchers' salaries.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+The stepwise AIC procedure began with a full model containing both 1986 season and
+career performance metrics and sequentially eliminated predictors that did not
+sufficiently improve the model fit, ultimately yielding a final model with an AIC of
+approximately 1999.1. This optimal model retains variables such as G86, IP86, SV86,
+years, and the career measures careerW, careerL, careerERA, and careerIP, indicating
+that these predictors collectively provide the most informative and parsimonious
+explanation of pitcher salary. The decrease in AIC from the full model to the final
+model suggests that unnecessary variables were removed, improving the balance between
+model complexity and goodness-of-fit.
+
+```{r}
+# First, remove any observations with missing salary values
+pitchers_data <- pitchers_data[!is.na(pitchers_data$salary), ]
+
+# Define a vector of predictor variable names
+potential_vars <- c("ERA86", "W86", "L86", "G86", "IP86", "SV86", "years",
+                    "careerW", "careerL", "careerERA", "careerG", "careerIP", "careerSV")
+
+# Extract the predictor matrix and response vector
+predictor_matrix <- pitchers_data[, potential_vars]
+salary_vector <- pitchers_data$salary
+
+# Standardize predictors (useful if you later pursue LASSO or other penalized methods)
+standardized_predictors <- scale(predictor_matrix)
+
+# Fit the full regression model using all candidate predictors
+full_model <- lm(salary ~ ., data = pitchers_data[, c("salary", potential_vars)])
+
+# Load the MASS package for stepwise model selection
+library(MASS)
+
+# Perform AIC-based stepwise selection (allowing both forward and backward steps)
+stepwise_model <- stepAIC(full_model, direction = "both")
+
+
+
+```
+
+:::
+
+(b) How successful is the model in predicting salaries? Does the model make substantive sense?
+
+::: {.callout-tip icon="false"}
+## Solution
+
+The model explains about 44% of the variance in salaries, as indicated by the 
+R-squared of 0.44, which is a moderate level of predictive power. The RMSE of
+approximately 278 means that, on average, the predicted salaries deviate from the
+actual values by around 278 units. This suggests that while the model captures key
+performance metrics relevant to salary determination, there remains substantial
+unexplained variability, indicating that other factors might also be important in
+predicting pitchers' salaries.
+
+```{r}
+# Assessing model performance
+predicted_salaries <- predict(stepwise_model, newdata = pitchers_data)
+actual_salaries <- pitchers_data$salary
+RMSE <- sqrt(mean((actual_salaries - predicted_salaries)^2))
+R2 <- summary(stepwise_model)$r.squared
+
+cat("RMSE:", RMSE, "\nR-squared:", R2)
+```
+
+:::

@@ -1,0 +1,467 @@
+---
+title: "HW 3 Nonlinear & Nonparametric Regression: Data Analysis Problems"
+subtitle: "Advanced Regression (STAT 353-0)"
+author: "Chan Lee"
+pagetitle: "HW 3 Chan Lee"
+date: today
+
+format:
+  html:
+    toc: true
+    toc-depth: 4
+    toc-location: left
+    embed-resources: true
+    code-fold: false
+    link-external-newwindow: true
+    theme: cosmo
+
+execute:
+  warning: false
+
+from: markdown+emoji
+reference-location: margin
+citation-location: margin  
+---
+
+::: {.callout-tip icon=false}
+
+## Github Repo Link
+
+To link to your github **repo**sitory, appropriately edit the example link below. Meaning replace `https://your-github-repo-url` with your github repo url. Suggest verifying the link works before submitting.
+
+[https://github.com/stat-353-0-2025-winter/hw-3-nonlinear-chanlee0716.git](https://github.com/stat-353-0-2025-winter/hw-3-nonlinear-chanlee0716.git)
+
+:::
+
+
+## Load packages & data
+
+
+```{r}
+#| label: load-pkgs-data
+
+# load package(s)
+library(stats)
+library(MASS)
+library(effects)
+library(car)
+library(ggplot2)
+library(plotly)
+library(mgcv)
+
+# load data
+ginzberg_data <- read.table("data/Ginzberg.txt", header = TRUE, sep = "", stringsAsFactors = TRUE) # read in Ginzberg data
+states_data <- read.table("data/states.txt", header = TRUE, sep = "", stringsAsFactors = TRUE) # read in states data
+duncan_data <- read.table("data/Duncan.txt", header = TRUE, sep = "", stringsAsFactors = TRUE) # read in duncan data
+chile_data <- read.table("data/chile.txt", header = TRUE, sep = "", stringsAsFactors = TRUE) # read in chile data
+chile_data <- subset(chile_data, vote %in% c("Y", "N")) # only focus on observations with vote = Y or N
+
+# Convert 'vote' to numeric (1 = Yes, 0 = No)
+chile_data$vote <- ifelse(chile_data$vote == "Y", 1, 0)
+
+# Convert categorical variables to factors
+chile_data$sex <- as.factor(chile_data$sex)
+chile_data$region <- as.factor(chile_data$region)
+chile_data$education <- as.factor(chile_data$education)
+```
+
+
+## Data analysis problems
+
+### 1. Exercise D17.1 
+
+The data in `Ginzberg.txt` (collected by Ginzberg) were analyzed by Monette (1990). The data are for a group of 82 psychiatric patients hospitalized for depression. The response variable in the data set is the patient's score on the Beck scale, a widely used measure of depression. The explanatory variables are "simplicity" (measuring the degree to which the patient "sees the world in black and white") and "fatalism". (These three variables have been adjusted for other explanatory variables that can influence depression.) Use the adjusted scores for the analysis.
+
+Using the full quadratic regression model
+
+$$Y = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \beta_3 X_1^2 + \beta_4 X_2^2 + \beta_5 X_1 X_2 + \epsilon$$
+
+regress the Beck-scale scores on simplicity and fatalism.
+
+```{r}
+# Fit full quadratic model
+ginzberg_model_full <- lm(adjdepression ~ adjsimplicity + adjfatalism + I(adjsimplicity^2) + I(adjfatalism^2) + I(adjsimplicity * adjfatalism), data = ginzberg_data)
+
+# Print model summary
+summary(ginzberg_model_full)
+```
+
+(a) Are the quadratic and product terms needed here?
+
+::: {.callout-tip icon="false"}
+## Solution
+
+As seen from the full quadratic model above, the quadratic terms have very high
+p-values, making us believe that they are not that significant. Thus, we removed them below,
+and the linear variables and the product term all have low p-values. Thus, we kept them.
+
+```{r}
+# Fit full quadratic model
+ginzberg_model <- lm(adjdepression ~ adjsimplicity + adjfatalism + I(adjsimplicity * adjfatalism), data = ginzberg_data)
+
+# Print model summary
+summary(ginzberg_model)
+```
+:::
+
+(b) Graph the data and the fitted regression surface in three dimensions. 
+Do you see any problems with the data?
+
+::: {.callout-tip icon="false"}
+## Solution
+
+As seen in the 3d plot below, we can see that adjusted depression increases as
+adjusted simplicity increases and adjusted fatalism decreases. Also, adjusted 
+depression decreases as both adjusted simplicity and adjfatatalism decrease.
+
+```{r}
+# Create a grid of adjsimplicity and adjfatalism values
+simplicity_seq <- seq(min(ginzberg_data$adjsimplicity, na.rm = TRUE), 
+                      max(ginzberg_data$adjsimplicity, na.rm = TRUE), 
+                      length.out = 30)
+
+fatalism_seq <- seq(min(ginzberg_data$adjfatalism, na.rm = TRUE), 
+                    max(ginzberg_data$adjfatalism, na.rm = TRUE), 
+                    length.out = 30)
+
+grid <- expand.grid(adjsimplicity = simplicity_seq, adjfatalism = fatalism_seq)
+
+# Predict adjdepression for each grid point
+grid$predicted_adjdepression <- predict(ginzberg_model, newdata = grid)
+
+ggplot(grid, aes(x = adjsimplicity, y = adjfatalism, fill = predicted_adjdepression)) +
+  geom_tile() +
+  scale_fill_viridis_c() +
+  labs(title = "Quadratic Model Prediction Surface",
+       x = "Adjusted Simplicity",
+       y = "Adjusted Fatalism",
+       fill = "Predicted Adjusted Depression") +
+  theme_minimal()
+
+```
+
+:::
+
+(c) What do standard regression diagnostics for influential observations show?
+::: {.callout-tip icon="false"}
+## Solution
+
+All the standard regression diagnostics indicate that the 71st patient is an outlier
+and has high influence.
+
+```{r}
+outlierTest(ginzberg_model)
+influenceIndexPlot(ginzberg_model)
+```
+
+:::
+
+### 2. Exercise D18.2 
+
+For this analysis, use the `States.txt` data, which includes average SAT scores for each state as the outcome.
+
+(a) Put together a model with SAT math (`satMath`) as the outcome and `region`, `population`, `percentTaking`,  and `teacherPay` as the explanatory variables, each included as linear terms. Interpret the findings.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+I took out teacherPay and population, as they were insignificant. Furthermore, the majority of interactions
+seemed to be insignificant, so I removed them all as well. Our new model has high explanatory power, with an 
+$R^2$ value of 0.882, meaning approximately 88.2% of the variance in SAT Math scores is explained by the predictors.
+From our model, we find that the percent of high-school seniors taking the SAT exam is a very strong predictor of SAT
+Math scores, with a tiny p value.
+
+The intercept (575.32) represents the estimated SAT Math score when percentTaking = 0 (unrealistic) and 
+when student is from East North Central. It is a significantly higher value than that for other regions,
+suggesting that students in this region significantly outperform those in others. 
+Among the other regional indicators, the Mountain (MTN) region (-15.55, p = 0.0461) 
+and the South Atlantic (SA) region (-27.34, p = 0.0050) show significant negative effects 
+on SAT Math scores compared to the reference region, suggesting that students 
+in these regions tend to score lower. 
+```{r}
+states_model_full <- lm(satMath ~ region + population + percentTaking + teacherPay, data = states_data)
+
+states_model <- lm(satMath ~ region + percentTaking , data = states_data)
+
+summary(states_model)
+```
+
+:::
+
+(b) Now, instead approach building this model using the nonparametric-regression methods discussed in Chapter 18 of our main course textbook, FOX. Fit a general nonparametric regression model *and* an additive-regression model, comparing the results to each other and to the linear least-squares fit to the data (in part (a))). If you have problems with categorical variables for the nonparametric models, feel free to remove them. Be sure to explain the models.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+Here, I simply took the MSE each of the models, and it shows that these are the following MSE values:
+Linear Model MSE: 279.1502; General Nonparametric (loess) MSE: 103.1622; Additive Model (gam) MSE: 94.951.
+We can see that the additive model improves the general nonparametric model, which improves
+the linear model. This implies that the relationship between the predictors and SAT 
+Math is nonlinear, and that an additive structure is sufficiently flexible and 
+parsimonious to improve predictive accuracy relative to a purely linear model.
+
+```{r}
+# General nonparametric regression using loess()
+loess_fit <- loess(satMath ~ population + percentTaking + teacherPay, 
+                   data = states_data, span = 0.6)
+loess_pred <- predict(loess_fit, newdata = states_data)
+
+# Additive regression model using gam() from the mgcv package (remove population)
+gam_fit <- gam(satMath ~ s(percentTaking) + region, data = states_data)
+#summary(gam_fit)
+gam_pred <- predict(gam_fit, newdata = states_data)
+
+# Compare the models by computing mean squared error (MSE) on the observed data:
+lm_mse    <- mean(residuals(states_model)^2)
+loess_mse <- mean((states_data$satMath - loess_pred)^2)
+gam_mse   <- mean((states_data$satMath - gam_pred)^2)
+
+cat("Linear Model MSE:", lm_mse, "\n")
+cat("General Nonparametric (loess) MSE:", loess_mse, "\n")
+cat("Additive Model (gam) MSE:", gam_mse, "\n")
+
+# Optionally, one can visualize the fitted values.
+# For example, create a data frame comparing observed and fitted values:
+#df_compare <- data.frame(
+#  satMath    = states_data$satMath,
+#  lm_fit     = lm_fit$fitted.values,
+#  loess_fit  = loess_pred,
+#  gam_fit    = gam_pred
+#)
+
+# A simple base R plot comparing observed vs. fitted for each model:
+#plot(df_compare$satMath, df_compare$lm_fit, pch = 16, col = "red",
+#     xlab = "Observed SAT Math", ylab = "Fitted SAT Math", 
+#     main = "Observed vs. Fitted Values")
+#points(df_compare$satMath, df_compare$loess_fit, pch = 17, col = "blue")
+#points(df_compare$satMath, df_compare$gam_fit, pch = 18, col = "green")
+#abline(0,1, lty = 2)  # 45-degree line for reference
+#legend("topleft", legend = c("Linear", "Loess", "Additive (gam)"),
+#       col = c("red", "blue", "green"), pch = c(16,17,18))
+```
+
+:::
+
+(c) Can you handle the nonlinearity by a transformation or by another parametric regression model, such as a polynomial regression? Investigate and explain. What are the tradeoffs between these nonparametric and parametric approaches?
+
+::: {.callout-tip icon="false"}
+## Solution
+
+The cubic polynomial regression model, which includes cubic terms for both percentTaking 
+and teacherPay (using orthogonal polynomials) along with the categorical region variable, 
+yields an adjusted R² of about 0.896 and an MSE of roughly 89.28. This indicates that 
+the model explains nearly 90% of the variability in SAT Math scores and that, on average, 
+the squared prediction error is 89.28.
+
+Comparing this to the nonparametric models we considered earlier (where LOESS and 
+the additive GAM produced MSEs of approximately 103.16 and 94.95, respectively), 
+the cubic polynomial model performs slightly better in terms of prediction error.
+
+```{r}
+# Assume states_data is already read in and region is a factor.
+states_data$region <- as.factor(states_data$region)
+
+# Fit a cubic polynomial regression model.
+# Here we model SAT math scores as a function of cubic polynomial functions of percentTaking and teacherPay,
+# along with the categorical variable region.
+poly_fit <- lm(satMath ~ poly(percentTaking, 3) + region, data = states_data)
+summary(poly_fit)
+
+# Get predictions at the observed data points
+poly_pred <- predict(poly_fit, newdata = states_data)
+
+# Compute the Mean Squared Error (MSE)
+poly_mse <- mean((states_data$satMath - poly_pred)^2)
+cat("Polynomial Regression (cubic) MSE:", poly_mse, "\n")
+```
+
+:::
+
+
+
+### 3. Exercise D18.3
+
+Return to the `Chile.txt` dataset used in HW 2. Reanalyze the data employing 
+generalized nonparametric regression (including generalized additive) models. 
+As in HW2, you can remove abstained and undecided votes, and focus only on Yes and No votes.
+
+(a) What, if anything, do you learn about the data from the nonparametric regression?
+
+::: {.callout-tip icon="false"}
+## Solution
+
+The plot shows how age affects the log-odds of voting “Yes” after accounting for 
+other predictors in the model. The solid line represents the estimated partial effect 
+of age on the log-odds scale, while the dashed lines are 95% confidence bands. Near 
+the mid-30s to early 40s, the effect is close to zero, suggesting that at these ages, 
+there is no strong shift in the probability of voting “Yes” relative to the baseline. 
+However, as age increases beyond the mid-40s, the curve and its confidence interval 
+move above zero, indicating that older individuals are more likely to vote “Yes” 
+(on the log-odds scale). Conversely, at younger ages, the effect dips below zero, 
+albeit with some overlap in the confidence interval, implying a slightly lower 
+probability of voting “Yes.” Overall, the model suggests that older voters tend 
+to be more inclined to support the “Yes” vote.
+```{r}
+# Example 1: If you have a continuous predictor, e.g., 'age'
+if("age" %in% names(chile_data)){
+  gam_fit <- gam(vote ~ s(age) + sex + region + education, 
+                 family = binomial, data = chile_data)
+  summary(gam_fit)
+  # Plot the smooth function for 'age'
+  plot(gam_fit, pages = 1)
+} else {
+  # Example 2: If no obvious continuous predictor exists,
+  # you might recode an ordinal variable (e.g., education) as numeric
+  chile_data$educ_num <- as.numeric(chile_data$education)
+  gam_fit <- gam(vote ~ s(educ_num) + sex + region, 
+                 family = binomial, data = chile_data)
+  summary(gam_fit)
+  plot(gam_fit, pages = 1)
+}
+```
+
+:::
+
+(b) If the results appear to be substantially nonlinear, can you deal with the nonlinearity in a suitably respecified generalized linear model (e.g., by transforming one or more explanatory variables)? If they do not appear nonlinear, still try a transformation to see if anything changes.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+Both models indicate that age is a significant predictor of the vote outcome. 
+In the polynomial model, the first component of the quadratic term for age is highly 
+significant (z ≈ 4.75), while the second component is not, suggesting that a simple 
+curvature is sufficient to capture the effect. In the log-transformed model, log_age 
+is similarly highly significant (z ≈ 4.77) with a positive coefficient, indicating that 
+as age increases (on a logarithmic scale), the odds of voting “Yes” increase. Comparing 
+model fit using AIC, the log model (AIC ≈ 2291.3) performs slightly better than the 
+polynomial model (AIC ≈ 2293.2), implying that a logarithmic transformation of age 
+may be more appropriate for this data. In both models, the effects of sex, region, 
+and education remain robust and significant, underscoring their importance in explaining voting behavior.
+
+
+```{r}
+# We'll assume you've already created chile_data with vote as 0/1,
+# and that it includes an "age" variable and factors such as sex, region, education.
+
+# 1. Polynomial Transformation (e.g., quadratic term for age)
+glm_poly <- glm(vote ~ poly(age, 2) + sex + region + education, 
+                data = chile_data, family = binomial)
+summary(glm_poly)
+
+# 2. Log Transformation (if age > 0 for all observations)
+chile_data$log_age <- log(chile_data$age)
+glm_log <- glm(vote ~ log_age + sex + region + education, 
+               data = chile_data, family = binomial)
+summary(glm_log)
+
+# Compare Model Fits
+# You can compare AIC or other criteria to see which model fits better:
+cat("Polynomial Model AIC:", AIC(glm_poly), "\n")
+cat("Log Model AIC:", AIC(glm_log), "\n")
+
+# For an additional check, you could examine predicted probabilities:
+pred_poly <- predict(glm_poly, type = "response")
+pred_log  <- predict(glm_log,  type = "response")
+
+# And compute the misclassification rate or any other predictive metric
+# (assuming you have a threshold, e.g. 0.5)
+misclass_rate <- function(obs, pred, threshold = 0.5) {
+  mean((pred > threshold) != obs)
+}
+cat("Polynomial Model Misclass Rate:", 
+    misclass_rate(chile_data$vote, pred_poly), "\n")
+cat("Log Model Misclass Rate:", 
+    misclass_rate(chile_data$vote, pred_log), "\n")
+```
+
+:::
+
+
+
+
+### 4. Exercise E18.7
+
+For this analysis, use the `Duncan.txt` data. Here we are interested in the outcome `prestige` and the explanatory variable `income`.
+
+(a) Fit the local-linear regression of prestige on income with span $s = 0.6$ (see Figure 18.7 in the book). This has 5.006 equivalent degrees of freedom, very close to the number of degrees of freedom for a fourth order polynomial.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+The local linear regression of prestige on income with span 0.6 is shown below.
+
+```{r}
+#x_seq <- seq(min(x), max(x), length.out = 100) # order the x vector
+
+# --- Local-Linear Regression ---
+# Fit the loess model
+loess_fit <- loess(prestige ~ income, data = duncan_data, span = 0.6, degree = 1)
+
+# Create a grid of income values covering the range of your data
+income_grid <- seq(min(duncan_data$income), max(duncan_data$income), length.out = 100)
+
+# Use the fitted loess model to predict prestige values on the income grid
+prestige_pred <- predict(loess_fit, newdata = data.frame(income = income_grid))
+
+# Combine the grid and predictions into a data frame for plotting
+pred_df <- data.frame(income = income_grid, prestige = prestige_pred)
+
+# Load ggplot2 and plot
+library(ggplot2)
+
+ggplot(duncan_data, aes(x = income, y = prestige)) +
+  geom_point(alpha = 0.6) +  # Plot original data points
+  geom_line(data = pred_df, aes(x = income, y = prestige), color = "red", size = 1) +  # Overlay the loess fit
+  labs(title = "Loess Regression Fit: Prestige vs Income",
+       x = "Income", y = "Prestige") +
+  theme_minimal()
+
+```
+
+:::
+
+(b) Fit a fourth order polynomial of the data and compare the resulting regression curve with the local-linear regression.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+The red line is the LOESS regression, and the blue line is the fourth
+order polynomial of the data. Note that they are very similar, but the 
+fourth order polynomial has slightly lower bias.
+
+```{r}
+# Fit a fourth order polynomial regression model
+poly_fit <- lm(prestige ~ poly(income, 4), data = duncan_data)
+
+# Create a grid for predictions spanning the range of income values
+income_grid <- seq(min(duncan_data$income), max(duncan_data$income), length.out = 100)
+
+# Generate predictions for both models on the grid
+loess_pred <- predict(loess_fit, newdata = data.frame(income = income_grid))
+poly_pred <- predict(poly_fit, newdata = data.frame(income = income_grid))
+
+# Combine predictions into one data frame for plotting
+pred_df <- data.frame(
+  income = income_grid,
+  `Local Linear Regression` = loess_pred,
+  `4th Order Polynomial` = poly_pred
+)
+
+# Create separate data frames for each set of predictions
+loess_df <- data.frame(income = income_grid, prestige_pred = loess_pred)
+poly_df  <- data.frame(income = income_grid, prestige_pred = poly_pred)
+
+# plot
+ggplot(duncan_data, aes(x = income, y = prestige)) +
+  geom_point(alpha = 0.6) +
+  geom_line(data = loess_df, aes(x = income, y = prestige_pred),
+            color = "red", size = 1) +
+  geom_line(data = poly_df, aes(x = income, y = prestige_pred),
+            color = "blue", size = 1) +
+  labs(title = "Comparison of Local Linear and 4th Order Polynomial Regression",
+       x = "Income", y = "Prestige") +
+  theme_minimal()
+
+```
+
+:::

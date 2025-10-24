@@ -1,0 +1,82 @@
+---
+title: "HW 4 Missing Data & Model Selection: Handwork Exercises - ONLY 12.4"
+subtitle: "Advanced Regression (STAT 353-0)"
+author: "Chan Lee"
+pagetitle: "HW 4 Handwork Chan Lee"
+date: today
+
+format:
+  html:
+    toc: true
+    toc-depth: 4
+    toc-location: left
+    embed-resources: true
+    code-fold: false
+    link-external-newwindow: true
+    theme: cosmo
+
+execute:
+  warning: false
+
+from: markdown+emoji
+reference-location: margin
+citation-location: margin
+---
+
+::: {.callout-tip icon=false}
+
+## Github Repo Link
+
+https://github.com/stat-353-0-2025-winter/hw-4-mdms-chanlee0716.git
+
+:::
+
+::: {.callout-important}
+
+**Required** for PhD and MS students in the Department of Statistics and Data Science. 
+
+These exercises are encouraged (but not required) for MS in Applied Statistics and all other students. These students will not be penalized for attempting these question. Nor will they receive extra credit. 
+
+:::
+
+## Handwork
+
+Exercises are from the course textbook *Applied Regression Analysis & Generalized Linear Models, 3rd Edition (FOX)* ---  20.5, 20.10, 20.13, 21.4, 22.2
+
+You can type your answers and submit within this file *or* you can do this work on paper and submit a scanned copy (be sure it is legible).
+
+You can type your answers directly into this document or you can do the work for each exercise on paper, take a picture of your solution, and include the image within this document (work must be legible). 
+
+Alternatively, you can do the Handwork exercises on paper and submit a scanned copy. This document is expected to be well organized and neat (work must be legible).
+
+### 1. Exercise E20.5 - attached separately
+
+### 2. Exercise E20.10 - attached separately
+
+### 3. Exercise E20.13- attached separately
+
+### 4. Exercise E21.4
+
+Note that the bootstrap bias estimate is -69.377, which is around 7 times smaller than 
+the theoretical value -10.
+
+```{r}
+set.seed(200)
+sample <- rnorm(10, mean = 0, sd = sqrt(100))
+
+# take 500 bootstrap samples
+bootstrap_bias_estimate <- 0
+for(i in 1:500) {
+  bootstrap_sample <- sample(sample, size = 10, replace = TRUE)
+  mean_of_bootstrap_sample <- mean(bootstrap_sample)
+  MLE_estimate_of_variance <- (1/10) * sum((bootstrap_sample - mean_of_bootstrap_sample)^2)
+  bootstrap_bias_estimate <- bootstrap_bias_estimate + MLE_estimate_of_variance
+}
+
+# find bootstrap bias estimate
+bootstrap_bias_estimate <- bootstrap_bias_estimate / 500 - 100
+
+sprintf("The bootstrap bias estimate is %f", bootstrap_bias_estimate)
+```
+
+### 5. Exercise E22.2 - attached separately

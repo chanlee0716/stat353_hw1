@@ -1,0 +1,328 @@
+---
+title: "HW 3 Nonlinear & Nonparametric Regression: Handwork Exercises"
+subtitle: "Advanced Regression (STAT 353-0)"
+author: "Chan Lee"
+pagetitle: "HW 3 Handwork Chan Lee"
+date: today
+
+format:
+  html:
+    toc: true
+    toc-depth: 4
+    toc-location: left
+    embed-resources: true
+    code-fold: false
+    link-external-newwindow: true
+    theme: cosmo
+
+execute:
+  warning: false
+
+from: markdown+emoji
+reference-location: margin
+citation-location: margin 
+---
+
+::: {.callout-tip icon=false}
+
+## Github Repo Link
+
+To link to your github **repo**sitory, appropriately edit the example link below. Meaning replace `https://your-github-repo-url` with your github repo url. Suggest verifying the link works before submitting.
+
+[https://github.com/stat-353-0-2025-winter/hw-3-nonlinear-chanlee0716.git](https://github.com/stat-353-0-2025-winter/hw-3-nonlinear-chanlee0716.git)
+:::
+
+::: {.callout-important}
+
+**Required** for PhD and MS students in the Department of Statistics and Data Science. 
+
+These exercises are encouraged (but not required) for MS in Applied Statistics and all other students. These students will not be penalized for attempting these question. Nor will they receive extra credit. 
+
+:::
+
+## Handwork
+
+Exercises are from the course textbook *Applied Regression Analysis & Generalized Linear Models, 3rd Edition (FOX)* --- 17.1, 17.2, 18.3, and 18.5. 
+
+You can type your answers directly into this document or you can do the work for each exercise on paper, take a picture of your solution, and include the image within this document (work must be legible). 
+
+Alternatively, you can do the Handwork exercises on paper and submit a scanned copy. This document is expected to be well organized and neat (work must be legible).
+
+```{r}
+#| label: load-pkgs-data
+
+# load package(s)
+library(stats)
+library(MASS)
+library(effects)
+library(car)
+library(ggplot2)
+library(plotly)
+
+# load data
+
+```
+
+### 1. Exercise E17.1
+::: {.callout-tip icon="false"}
+## Solution
+
+
+## Part A
+
+- Metric Effect of $X_1$ on $Y$: $\frac{\delta Y}{\delta X_1} = \beta_1$.  
+Interpretation is: One unit of increase in $X_1$ results in $\beta_1$ units of increase in Y.
+
+- Effect of Proportional Change in $X_1$ on $Y$: $\frac{\delta Y}{\delta X_1}X_1 = \beta_1 X_1$.  
+Interpretation is: Given $X_1 = x_1$, a one percent increase in $X_1$ results in $\beta_1 x_1$ units of increase in Y.
+
+- Inst. Rate of Return of $Y$ wrt $X_1$: $\frac{\delta Y}{\delta X_1}/Y = \beta_1/Y = \beta_1/(\alpha + \beta_1 x_1 + \beta_2 x_2)$.  
+Interpretation is: Given $X_1 = x_1$, $X_2 = x_2$, a one unit of increase in $X_1$ results in $\beta_1/(\alpha + \beta_1 x_1 + \beta_2 x_2)$ percent increase in Y.
+
+- Point Elasticity of $Y$ wrt $X_1$: $\frac{\delta Y}{\delta X_1}\frac{X_1}{Y} = \frac{\beta_1 X_1}{Y} = \frac{\beta_1 X_1}{\alpha + \beta_1 x_1 + \beta_2 x_2}$.  
+Interpretation is: Given $X_1 = x_1$, a percent of increase in $X_1$ results in $\frac{\beta_1 x_1}{\alpha + \beta_1 x_1 + \beta_2 x_2}$ percent increase in Y.
+
+- They're all pretty simple, but the metric effect is the simplest result in this case.
+
+- I would use least squares linear regression to fit the model to any data.
+
+## Part B
+
+- Metric Effect of $X_1$ on $Y$: $\frac{\delta Y}{\delta X_1} = \beta_1 + 2\beta_2 X_1$.  
+Interpretation is: Given $X_1 = x_1$, a one unit of increase in $X_1$ results in $\beta_1 + 2\beta_2 x_1$ units of increase in Y.
+
+- Effect of Proportional Change in $X_1$ on $Y$: $\frac{\delta Y}{\delta X_1}X_1 = X_1 (\beta_1 + 2\beta_2 X_1)$.   
+Interpretation is: Given $X_1 = x_1$, a one percent increase in $X_1$ results in $x_1 (\beta_1 + 2\beta_2 x_1)$ units of increase in Y.
+
+- Inst. Rate of Return of $Y$ wrt $X_1$: $\frac{\delta Y}{\delta X_1}/Y = (\beta_1 + 2\beta_2 X_1)/Y = \frac{\beta_1 + 2\beta_2 X_1}{\alpha + \beta_1 X_1 + \beta_2 X_1^2 + \beta_3 X_2}$.  
+Interpretation is: Given $X_1 = x_1$ and $X_2 = x_2$, a one unit of increase in $X_1$ results in $\frac{\beta_1 + 2\beta_2 x_1}{\alpha + \beta_1 x_1 + \beta_2 x_1^2 + \beta_3 x_2}$ percent increase in Y.
+
+- Point Elasticity of $Y$ wrt $X_1$: $\frac{\delta Y}{\delta X_1}\frac{X_1}{Y} = (\beta_1 + 2\beta_2 X_1)\frac{X_1}{Y} = \frac{X_1(\beta_1 + 2\beta_2 X_1)}{\alpha + \beta_1 X_1 + \beta_2 X_1^2 + \beta_3 X_2}$.   
+Interpretation is: Given $X_1 = x_1$ and $X_2 = x_2$, a percent of increase in $X_1$ results in $\frac{x_1(\beta_1 + 2\beta_2 x_1)}{\alpha + \beta_1 x_1 + \beta_2 x_1^2 + \beta_3 x_2}$ percent increase in Y.
+
+- The metric effect is the simplest result in this case.
+
+- Can fit model to data using Ordinary Least Squares (OLS) regression.
+
+## Part C
+
+- Metric Effect of $X_1$ on $Y$: $\frac{\delta Y}{\delta X_1} = \beta_1 + \beta_3 X_2$.  
+Interpretation is: Given $X_2 = x_2$, a one unit of increase in $X_1$ results in $\beta_1 + \beta_3 x_2$ units of increase in Y.
+
+- Effect of Proportional Change in $X_1$ on $Y$: $\frac{\delta Y}{\delta X_1}X_1 = X_1(\beta_1 + \beta_3 X_2)$.  
+Interpretation is: Given $X_1 = x_1$ and $X_2 = x_2$, a one percent increase in $X_1$ results in $x_1(\beta_1 + \beta_3 x_2)$ units of increase in Y.
+
+- Inst. Rate of Return of $Y$ wrt $X_1$: $\frac{\delta Y}{\delta X_1}/Y = (\beta_1 + \beta_3 X_2)/Y = \frac{\beta_1 + \beta_3 X_2}{\alpha + \beta_1X_1 + \beta_2 X_2 + \beta_3 X_1 X_2}$.  
+Interpretation is: Given $X_1 = x_1$ and $X_2 = x_2$, a one unit of increase in $X_1$ results in $\frac{\beta_1 + \beta_3 x_2}{\alpha + \beta_1 x_1 + \beta_2 x_2 + \beta_3 x_1 x_2}$ percent increase in Y.
+
+- Point Elasticity of $Y$ wrt $X_1$: $\frac{\delta Y}{\delta X_1}\frac{X_1}{Y} = (\beta_1 + \beta_3 X_2)\frac{X_1}{Y} = \frac{X_1(\beta_1 + \beta_3 X_2)}{\alpha + \beta_1X_1 + \beta_2 X_2 + \beta_3 X_1 X_2}$.  
+Interpretation is: Given $X_2 = x_2$ and $X_1 = x_1$, a percent of increase in $X_1$ results in $\frac{x_1(\beta_1 + \beta_3 x_2)}{\alpha + \beta_1 x_1 + \beta_2 x_2 + \beta_3 x_1 x_2}$ percent increase in Y.
+
+- Again, the metric effect yields the simplest response.
+
+- Can fit model to data using Ordinary Least Squares (OLS) regression.
+
+
+## Part D
+
+- Metric Effect of $X_1$ on $Y$: $\frac{\delta Y}{\delta X_1} = \beta_1 \exp(\alpha + \beta_1 X_1 + \beta_2 X_2)$.  
+Interpretation is: Given $X_2 = x_2$ and $X_1 = x_1$, a one unit of increase in $X_1$ results in $\beta_1 \exp(\alpha + \beta_1 x_1 + \beta_2 x_2)$ units of increase in Y.
+
+- Effect of Proportional Change in $X_1$ on $Y$: $\frac{\delta Y}{\delta X_1}X_1 = X_1\beta_1 \exp(\alpha + \beta_1 X_1 + \beta_2 X_2)$.  
+Interpretation is: Given $X_2 = x_2$ and $X_1 = x_1$, a one percent increase in $X_1$ results in $\beta_1 \exp(\alpha + \beta_1 x_1 + \beta_2 x_2)$ units of increase in Y.
+
+- Inst. Rate of Return of $Y$ wrt $X_1$: $\frac{\delta Y}{\delta X_1}/Y = \frac{\beta_1}{Y} \exp(\alpha + \beta_1 X_1 + \beta_2 X_2) = \beta_1 \exp(0) = \beta_1$.  
+Interpretation is: A one unit of increase in $X_1$ results in $\beta_1$ percent increase in Y.
+
+- Point Elasticity of $Y$ wrt $X_1$: $\frac{\delta Y}{\delta X_1}\frac{X_1}{Y} = X_1 \beta_1$.  
+Interpretation is: Given $X_1 = x_1$, a one percent of increase in $X_1$ results in $x_1 \beta_1$ percent increase in Y.
+
+- Simplest response is the Inst. Rate of Return of $Y$ wrt $X_1$.
+
+- Log transform the model and then fit OLS regression.
+
+
+## Part E
+
+- Metric Effect of $X_1$ on $Y$: $\frac{\delta Y}{\delta X_1} = \alpha \beta_1 X_2^{\beta_2} X_1^{\beta_1-1}$.  
+Interpretation is: Given $X_2 = x_2$ and $X_1 = x_1$, a one unit of increase in $X_1$ results in $\alpha \beta_1 x_2^{\beta_2} x_1^{\beta_1-1}$ units of increase in Y.
+
+- Effect of Proportional Change in $X_1$ on $Y$: $\frac{\delta Y}{\delta X_1}X_1 = \alpha \beta_1 X_2^{\beta_2} X_1^{\beta_1}$.  
+Interpretation is: Given $X_2 = x_2$ and $X_1 = x_1$, a one percent increase in $X_1$ results in $\alpha \beta_1 x_2^{\beta_2} x_1^{\beta_1}$ units of increase in Y.
+
+- Inst. Rate of Return of $Y$ wrt $X_1$: $\frac{\delta Y}{\delta X_1}/Y = \frac{\alpha \beta_1}{Y} X_2^{\beta_2} X_1^{\beta_1-1} = \frac{\alpha \beta_1 X_2^{\beta_2} X_1^{\beta_1-1}}{\alpha X_1^{\beta_1} X_2^{\beta_2}} = \frac{\beta_1}{X_1}$.   
+Interpretation is: Given $X_2 = x_2$ and $X_1 = x_1$, a one unit of increase in $X_1$ results in $\frac{\beta_1}{x_1}$ percent increase in Y.
+
+- Point Elasticity of $Y$ wrt $X_1$: $\frac{\delta Y}{\delta X_1}\frac{X_1}{Y} = \beta_1$.  
+Interpretation is: Given $X_2 = x_2$ and $X_1 = x_1$, a one percent of increase in $X_1$ results in $\beta_1$ percent increase in Y.
+
+- The simplest response is the Point Elasticity of $Y$ wrt $X_1$.
+
+- Like in part d, you should linearize the model using logarithms and estimate it using OLS.
+
+:::
+
+
+### 2. Exercise E17.2
+::: {.callout-tip icon="false"}
+## Solution
+
+## Part A Proof
+Pf: It is sufficient to show that each orthogonal polynomial contrast is a linear 
+combo of the original polynomial regressors. $X^*$ is trivially a linear combo of the
+regressors. Will prove by induction. Suppose $X^{*(k-1)}$ is a linear combo of the 
+original polynomial regressors. Note that for any $k \in [2,m-1] \cap \mathbb{Z}$, $$X^{*k} = X_k - \Pi_{\text{span}(1,X^*,...,X^{*(k-1)})}(X^k)$$ and note that by definition of
+projections, $$\Pi_{\text{span}(1,X^*,...,X^{*(k-1)})}(X^k) = c_0 + c_1X^* + c_2 X^{*2} + ... + c_{k-1}X^{*(k-1)}$$ and by induction, we get that $X^{*k}$ is also a linear combo
+of the original polynomial regressors, and so, both set of vectors span the same subspace.
+
+## Part B Proof
+Pf: Recall that each orthogonal contrast is formed as: $$X^{*k} = X^k - \sum_{j=0}^{k-1} c_j X^{*j}$$
+for some coefficient $c_j$ that ensure orthogonality. Since $X^{*k} is uncorrelated
+with all previous predictors, its ISS is $$ISS(X^{*k}) = SS(M_k) - SS(M_{k-1})$$
+Because of orthogonality, this is simply $$ISS(X^{*k}) = Var(X^{*k})\beta_k^2$$
+For the original polynomial regressor $X^k$, the Step-Down SS is 
+$$SDSS(X^k) = SS(M_{full}) - SS(M_{reduced(without X^k)})$$ Since $X^{*k}$ is
+obtained by subtracting the projection of $X^k$ onto the lower degree terms, 
+the unique contribution of $X^k$ in the original basis is exactly the variance
+of $X^{*k}$. Thus, $$SDSS(X^k) = ISS(X^{*k})$$ for all $k$, proving that
+$$\sum_k ISS(X^{*k}) = \sum_k SDSS(X^k)$$
+## Part C
+The primary advantage of using orthogonal polynomial contrasts instead of raw
+polynomial regressors is that they eliminate multicollinearity, which is common 
+in standard polynomial regression since higher-degree terms are often highly 
+correlated with lower-degree terms. By constructing orthogonal contrasts using
+Gram-Schmidt orthogonalization, each transformed predictor is uncorrelated with the
+others, leading to more stable coefficient estimates, lower standard errors, and
+improved interpretability. This also makes statistical inference (e.g., hypothesis
+testing) more reliable, as the contribution of each term can be assessed independently
+without being affected by collinearity issues. Additionally, orthogonal polynomial
+contrasts help in sequential model building, where Incremental Sum of Squares (ISS)
+directly measures the unique contribution of each term, simplifying stepwise regression
+procedures.
+
+## Part D
+Yes, the same approach can be applied to a continuous quantitative explanatory variable
+by using orthogonal polynomial transformations, ensuring that each higher-degree term
+(quadratic, cubic, etc.) is uncorrelated with the lower-degree terms. This is achieved
+through Gram-Schmidt orthogonalization, where the quadratic component is defined as the
+residual of $X^2$ after removing its projection onto the linear term, and the cubic
+component is similarly constructed by ensuring orthogonality to both the linear and
+quadratic terms. This eliminates multicollinearity, leading to more stable coefficient
+estimates, reduced standard errors, and improved interpretability in regression models.
+
+:::
+
+
+### 3. Exercise E18.3
+::: {.callout-tip icon="false"}
+## Solution
+
+It appears from the graph below that the kernel regression had the least bias,
+possibly because the local linear regression is defined by a low degree polynomial
+(and higher degree polynomials have lower bias).
+
+```{r}
+set.seed(123) # for reproducibility
+n <- 100 # num of observations
+x <- runif(n, min = 0, max = 100) # generate x vector
+epsilon <- rnorm(n, mean = 0, sd = 20) # generate epsilon vector
+y <- 100 - 5*(x/10 - 5) + (x/10 - 5)^3 + epsilon # find y vector
+y_hat <- 100 - 5*(x/10 - 5) + (x/10 - 5)^3 # find E[Y] vector
+df_data <- as.data.frame(cbind(x, y, y_hat)) # create dataframe
+
+x_seq <- seq(min(x), max(x), length.out = 100) # order the x vector
+cubic_est <- 100 - 5*(x_seq/10 - 5) + (x_seq/10 - 5)^3 # cub reg est for ordered x vector
+
+# --- Kernel Regression ---
+kernel_fit <- ksmooth(x, y, kernel = "normal", bandwidth = 10, x.points = x_seq) # use ksmooth
+kernel_est <- kernel_fit$y # extract kernel reg est for ordered x vector
+
+# --- Local-Linear Regression ---
+loess_fit <- loess(y ~ x, data = df_data, span = 0.5, degree = 1) # use loess 
+local_linear_pred <- predict(loess_fit, newdata = data.frame(x = x_seq))
+
+# --- Combine Predictions into One Big Data Frame ---
+big_df <- data.frame(
+  x = x_seq,
+  `Cubic Reg Est` = cubic_est,
+  `Kernel Reg Est` = kernel_est,
+  `Local Linear Est` = local_linear_pred
+)
+
+# --- Plotting with ggplot2 ---
+ggplot() +
+  # Plot original data points
+  geom_point(data = df_data, aes(x = x, y = y), alpha = 0.5) +
+  # Plot the three regression estimates as lines
+  #geom_line(data = big_long, aes(x = x, y = y_est, color = Method)) +
+  geom_line(data = big_df , aes(x = x, y = Cubic.Reg.Est, color = "Cubic Reg Est")) +
+  geom_line(data = big_df , aes(x = x, y = Kernel.Reg.Est, color = "Kernel Reg Est")) +
+  geom_line(data = big_df , aes(x = x, y = Local.Linear.Est, color = "Local Linear Est")) +
+  scale_color_manual(name = "Method", 
+                     values = c("Cubic Reg Est" = "red",
+                                "Kernel Reg Est" = "blue",
+                                "Local Linear Est" = "green")) +
+  labs(title = "Y vs X with Various Regression Estimators",
+       x = "X", y = "Y") +
+  theme_minimal()
+```
+
+:::
+
+### 4. Exercise E18.5
+::: {.callout-tip icon="false"}
+## Solution
+
+The optimal span is 0.3 with an ASE of 223.9302. This is close to my visual selection of the span of 0.5.
+
+```{r}
+find_ASE <- function(span_value) {
+  set.seed(123)  # for reproducibility
+  n <- 100       # number of observations
+  x <- runif(n, 0, 100)           
+  epsilon <- rnorm(n, 0, 20)
+  y <- 100 - 5*(x/10 - 5) + (x/10 - 5)^3 + epsilon  # observed y
+  # Compute the true function on the original x values (if desired)
+  # y_hat <- 100 - 5*(x/10 - 5) + (x/10 - 5)^3
+  
+  # Create a data frame for the observed data
+  df_data <- data.frame(x = x, y = y)
+  
+  # Define a common grid for predictions and for the true function
+  x_seq <- seq(min(x), max(x), length.out = 100)
+  
+  # Compute the true function on the same grid
+  y_seq_true <- 100 - 5*(x_seq/10 - 5) + (x_seq/10 - 5)^3
+  
+  # --- Local-Linear Regression ---
+  loess_fit <- loess(y ~ x, data = df_data, span = span_value, degree = 1,
+                     control = loess.control(cell = 1000))
+  local_linear_pred <- predict(loess_fit, newdata = data.frame(x = x_seq))
+  
+  # Calculate ASE on the same grid:
+  ASE <- mean((local_linear_pred - y_seq_true)^2)
+
+  return(ASE)
+}
+
+# Compute ASE for spans from 0.05 to 0.95
+s <- seq(0.06, 0.95, by = 0.01)
+ASE_s <- sapply(s, find_ASE)
+
+df2 <- data.frame(
+  span_values = s,
+  ASE_values = ASE_s
+)
+
+ggplot(data = df2, aes(x = span_values, y = ASE_values)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title = "ASE for Span Values", x = "Span", y = "ASE")
+
+best_span <- s[which.min(ASE_s)]
+best_ASE <- min(ASE_s)
+#cat("The optimal span is", best_span, "with an ASE of", best_ASE, "\n")
+```
+
+:::
+

@@ -1,0 +1,606 @@
+---
+title: "HW 2: Generalized Linear Models"
+subtitle: "Advanced Regression (STAT 353-0)"
+author: "Chan Lee"
+pagetitle: "HW 2 Chan Lee"
+date: today
+
+format:
+  html:
+    toc: true
+    toc-depth: 4
+    toc-location: left
+    embed-resources: true
+    code-fold: false
+    link-external-newwindow: true
+    theme: cosmo
+
+execute:
+  warning: false
+
+from: markdown+emoji
+reference-location: margin
+citation-location: margin  
+---
+
+::: {.callout-tip icon=false}
+
+## Github Repo Link
+
+To link to your github **repo**sitory, appropriately edit the example link below. Meaning replace `https://your-github-repo-url` with your github repo url. Suggest verifying the link works before submitting.
+
+[https://github.com/stat-353-0-2025-winter/hw-2-glms-chanlee0716.git](https://github.com/stat-353-0-2025-winter/hw-2-glms-chanlee0716.git)
+
+:::
+
+## Handwork
+
+Policy on handwork is that it is required for Statistics PhD students and MS in Statistics students. It is encouraged (but not required) for MS in Applied Statistics and all other students. If you are the latter, you will not get penalized if you get these wrong.
+
+Exercises are from the course textbook *Applied Regression Analysis & Generaized Linear Models, 3rd Edtion (FOX)* --- 14.1, 14.3, 14.6, 15.2, and 15.4.
+
+You can type your answers directly into this document or you can do the work for each exercise on paper, take a picture of your solution, and include the image within this document (work must be legible). 
+
+Alternatively, you can do the Handwork exercises on paper and submit a scanned copy along with your html completing the Data Analysis exercises. That is, you will be submitting a pdf with your solution to the Handwork exercises and an html file with solutions to the Data Analysis exercises. Both documents should be well organized and in the case of the handwork, it must be legible.
+
+**Note: Handwork exercises are attached separately.**
+
+
+
+## Data analysis
+
+### Exercise D14.1 (Dichotomous)
+
+For this question, we will use the `Chile.txt` dataset, which has a polytomous outcome: voting intention (yes, no, abstain, undecided). For this problem, focus only on the subset of the data with outcomes of either 'yes' or 'no'.
+
+```{r}
+library(stats)
+library(MASS)
+library(effects)
+library(car)
+
+chile_data <- read.table("data/chile.txt", header = TRUE, sep = "", stringsAsFactors = TRUE) # read in chile data
+chile_data <- subset(chile_data, vote %in% c("Y", "N")) # only focus on observations with vote = Y or N
+
+# Convert 'vote' to numeric (1 = Yes, 0 = No)
+chile_data$vote <- ifelse(chile_data$vote == "Y", 1, 0)
+
+# Convert categorical variables to factors
+chile_data$sex <- as.factor(chile_data$sex)
+chile_data$region <- as.factor(chile_data$region)
+chile_data$education <- as.factor(chile_data$education)
+
+# Combine the C and S education categories (indisintugishable)
+#chile_data$education <- factor(chile_data$education, 
+                               #levels = c("C", "S", "PS"),
+                               #labels = c("CS", "CS", "PS"))  # Combine "C" and "S"
+```
+
+(a) Formulate a model that makes substantive sense in the context of the data set - for example, constructing dummy regressors to represent factors and including interaction regressors where these are appropriate - and fit a linear logistic regression of the response variable on the explanatory variables, reporting the estimated regression coefficients and their asymptotic standard errors.
+
+::: {.callout-tip icon="false"}
+## Solution
+After checking the p values of the full model (which includes interactions between variables), I found that population, income, age, and region were insignificant predictors of vote. Furthermore, every three (or more) way interactions, and every two way interaction was insignificant (except the one between education and income). Hence, my final model contains the regressors: sex, education, statusquo, and education:income.
+
+
+```{r}
+# Fit logistic regression model, after removing some regressors w/ high p vals
+logit_model <- glm(
+  vote ~ sex + education + statusquo + education:income,
+  data = chile_data, 
+  family = binomial(link = "logit"))
+
+# Display results
+summary(logit_model)
+```
+
+:::
+
+(b) Construct an analysis-of-deviance table for the model fit in part (a).
+
+::: {.callout-tip icon="false"}
+## Solution
+After constructing the ANOVA table, I found that all of the four variables I included
+were highly significant, leading me to believe that this model be a viable candidate
+for the final model.
+
+```{r}
+anova(logit_model, test = "Chisq")
+```
+:::
+
+(c) Fit a final model to the data that includes the statistically significant effects. 
+Construct an effect display for each high-order term in the model, if your model includes them. If the model is additive, (i) suggest two interpretations of each estimated coefficient; and  (ii) construct likelihood-ratio-based 95- percent confidence intervals for the regression coefficients, comparing these with confidence intervals based on the Wald statistic.
+
+::: {.callout-tip icon="false"}
+## Solution
+Please refer to parts a and b for summary statistics of the final model, which is
+the variable logit_model!
+
+**Explanation of Effect Display**
+From the effect display for the education:income interaction
+variable, we see that slopes of the univariate regression between vote and the individual
+education levels vary significantly, which confirm that there are interactions
+between education and income levels. From this, we observe that individuals with primary
+education were more likely to vote for Pinochet if they had higher income levels,
+while the opposite was true for those with secondary education. We see that those
+with post secondary education were slightly more likely to vote for Pinochet with higher
+income, although the effects were relatively the same throughout all income levels. 
+Also, note that at the primary and secondary education levels, 
+the variance increases with higher income levels.
+
+```{r}
+plot(effect("education:income", logit_model), main = "Effect of Education and Income on Voting Probability")
+```
+**(i) Interpretations of Coefficients**
+- Intercept - (1) For a female with primary education, an income of zero, and
+a statusquo of zero, the log odds of voting "Yes" is 0.7439. (2) For a female 
+with primary education, an income of zero, and a statusquo of zero, the odds of 
+voting "Yes" to "No" is 2.1:1.
+
+- sexM - (1) Holding all other variables constant, being male decreases the log 
+odds of voting "Yes" by 0.602 compared to being female. (2) Holding all other 
+variables constant, being male decreases the odds of voting "Yes" by around 45%.
+
+- educationPS - (1) Holding all other variables constant, having a post-secondary
+education decreases the log odds of voting "Yes" by 0.9292 compared to having primary education.
+(2) The odds of voting "Yes" for individuals with post-secondary education are 
+exp(-0.9292) = 0.394 times the odds for those in the reference category (P), meaning they are about 60.6% less likely to vote "Yes."
+
+- educationS - (1) Holding all other variables constant, being in the S (Secondary) education category decreases the log-odds of voting "Yes" by 0.0063 compared to the reference category (P).
+(2) The odds of voting "Yes" for individuals in the Secondary education category are exp(-0.0063) = 0.9937 times the odds for those in the reference category (P), meaning there is almost no difference in likelihood of voting "Yes."
+
+- statusquo - (1) Holding all other variables constant, a one-unit increase in statusquo increases the log-odds of voting "Yes" by 3.2270. (2) A one-unit increase in statusquo multiplies the odds of voting "Yes" by exp(3.227) = 25.2, meaning that individuals with a higher statusquo score are over 25 times more likely to vote "Yes."
+
+- educationPS:income - (1) Holding all other variables constant, for individuals in the PS (Post-Secondary) education category, a one-unit increase in income increases the log-odds of voting "Yes" by 0.000001455. (2) For individuals in the PS education category, a one-unit increase in income increases the odds of voting "Yes" by exp(0.000001455) ≈ 1.0000015, meaning income has almost no practical effect on voting behavior in this group.
+
+- educationS:income - (1) Holding all other variables constant, for individuals in the S (Secondary) education category, a one-unit increase in income decreases the log-odds of voting "Yes" by 0.00001037.
+(2) For individuals in the S (Secondary) education category, a one-unit increase in income slightly reduces the odds of voting "Yes" by a factor of exp(-0.00001037) ≈ 0.9999896, meaning income has a very small negative effect on voting behavior in this group.
+
+**(ii) Comparing Confidence Intervals **
+As seen from the results below, the likelihood-ratio-based 95- percent confidence intervals for the regression coefficients
+and the confidence intervals based on the Wald statistic are essentially the same.
+```{r}
+Confint(logit_model)
+
+confint.default(logit_model)
+```
+:::
+
+(d) Fit a probit model to the data, comparing the results to those obtained with the logit model. Which do you think is better? Why?
+
+::: {.callout-tip icon="false"}
+## Solution
+
+The logit and probit models produce nearly identical results, with coefficients 
+having the same signs and significance levels. As expected, the probit coefficients 
+are consistently smaller (approximately 1.6 times less than the logit coefficients) 
+due to differences in scale. The strongest predictor in both models is statusquo, 
+while sexM and educationPS also show significant effects, with males and 
+post-secondary-educated individuals being less likely to vote "Yes." Model fit metrics 
+indicate minimal differences, with the logit model having a slightly lower AIC (715.16 vs. 716.2) 
+and nearly identical residual deviance (699.16 vs. 700.2). Since both models fit the data similarly, 
+logit is the preferred choice due to its slightly better AIC and easier interpretation using odds ratios. 
+Probit could be used if a normal distribution assumption was necessary, but in this case, logit provides more practical insights.
+
+```{r}
+probit_model <- glm(
+  vote ~ sex + education + statusquo + education:income,
+  data = chile_data, 
+  family = binomial(link = "probit")
+)
+
+# Display summary of the probit model
+summary(probit_model)
+```
+
+:::
+
+
+### Exercise D14.2 (Polytomous outcome)
+
+Proceed as in Exercise D14.1, but now include all of the data and the four possible outcome values.
+
+Use, as appropriate, one or more of the following: a multinomial logit model; a proportional odds logit model; logit models fit to a set of nested dichotomies; or similar probit models. If you fit the proportional-odds model, test the assumption of parallel regressions. If you fit more than one kind of model, which model do you prefer and why? If you only fit one model, why? Make sure to explain the results and interpretations of the preferred model.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+For our model, it is not appropriate to use the proportional odds logit model because
+the response variable is not ordered. Furthermore, we don't use the logit/probit models fit to a
+set of nested dichotomies because there was no logical way to nest the dichotomies for our model.
+Hence, we decided to use the multinomial logit model. 
+
+As seen from the results, the multinomial logistic regression model examines how sex, 
+education, statusquo, and their interaction with income influence voting behavior 
+across the categories: Yes (Y), Uncertain (U), and Abstained (A), compared to 
+No (N) as the reference category. The results show that statusquo has the strongest 
+effect, significantly increasing the likelihood of voting "Yes" (coefficient = 3.679) 
+and "Uncertain" (coefficient = 2.132) relative to "No," indicating that individuals 
+with a higher preference for the status quo are more likely to vote. Being male 
+(sexM) reduces the probability of voting "Yes", "Uncertain", or "Abstained" 
+compared to "No", suggesting that men are less likely to engage in voting. 
+Higher education (educationPS and educationS) generally decreases the likelihood of 
+voting "Yes" or "Uncertain" relative to "No", though it slightly increases the 
+likelihood of abstaining (educationPS = 0.364). The interaction between education 
+and income has small effects, with educationP:income positively influencing "Yes" 
+and "Abstained," but negatively affecting "Uncertain," implying that income modifies 
+the effect of education on voting preferences. The model’s AIC (4097.429) and residual 
+deviance (4049.429) indicate reasonable fit, but further evaluation (e.g., classification 
+accuracy) is needed to assess predictive power. Overall, status quo preference strongly 
+predicts voting engagement, while gender and education play significant roles in voting likelihood.
+
+```{r}
+library(nnet)
+library(brant)
+library(pscl)
+library(MASS)
+
+chile_data_2 <- read.table("data/chile.txt", header = TRUE, sep = "", stringsAsFactors = TRUE) # read in chile data
+chile_data_2 <- subset(chile_data_2, complete.cases(chile_data_2))
+chile_data_2$vote <- factor(chile_data_2$vote, levels = c("N", "Y", "U", "A"))  # Define proper factor levels
+
+# Convert categorical variables to factors
+chile_data_2$sex <- as.factor(chile_data_2$sex)
+chile_data_2$region <- as.factor(chile_data_2$region)
+chile_data_2$education <- as.factor(chile_data_2$education)
+```
+
+
+```{r}
+# Fit multinomial logistic regression
+multinom_model <- multinom(vote ~ sex + education + statusquo + education:income, data = chile_data_2)
+
+# Summary of the model
+summary(multinom_model)
+```
+:::
+
+
+### Exercise D15.3 (GLM Diagnostics)
+
+Return to the logit (and probit) model that you fit in Exercise D14.1.
+
+(a) Use the diagnostic methods for generalized linear models described in this chapter to check the adequacy of the final model that you fit to the data.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+As seen from the code below, there seem to be very few to no significant outliers in both the
+logit and probit models. There seem to be some points with high leverage points, but no
+significant outliers to remove.
+
+Furthermore
+
+```{r}
+library(car)
+outlierTest(logit_model)
+outlierTest(probit_model)
+
+influenceIndexPlot(logit_model)
+```
+
+
+The added-variable plots (AV plots) suggest that statusquo is the strongest predictor 
+of voting behavior, as it exhibits a clear linear relationship with the response variable. 
+In contrast, sexM, educationPS, and educationS display weak relationships, with nearly 
+flat regression lines, indicating that they may have little impact on voting probability. 
+The interaction terms (education:income) show no clear trend, suggesting that they may not 
+contribute significantly to the model and could be removed to simplify interpretation. 
+However, one can claim that our model is still viable.
+```{r}
+avPlots(logit_model)
+avPlots(probit_model)
+```
+
+:::
+
+
+(b) If the model contains a discrete quantitative explanatory variable (such as a binned variable), test for nonlinearity by specifying a model that treats this variable as a factor (e.g., using dummy regressors), and comparing that model via a likelihood-ratio test to the model that specifies that the variable has a linear effect. (If there is more than one discrete quantitative explanatory variable, then begin with a model that treats all of them as factors, contrasting this with a sequence of models that specifies a linear effect for each such variable in turn.) Note that this is analogous to the approach for testing for nonlinearity in a linear model with discrete explanatory variables described in Section 12.4.1.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+The likelihood-ratio test comparing the two models suggests that treating statusquo as a categorical factor does not significantly improve model fit over treating it as a continuous variable. While the residual deviance drops substantially from 699.16 to 35.30, this is accompanied by a large reduction in degrees of freedom (1695 to 463), indicating a much more complex model. However, the p-value of 1 suggests that this complexity does not lead to a statistically significant improvement in fit. Therefore, the results indicate that statusquo can be adequately modeled as a continuous variable, as treating it as categorical does not meaningfully enhance predictive power. Based on this, the simpler linear model should be preferred to avoid unnecessary complexity while maintaining model accuracy.
+
+```{r}
+chile_data_clean <- na.omit(chile_data)  # Remove rows with any missing values
+
+chile_data_clean$statusquo_factor <- as.factor(chile_data_clean$statusquo)
+
+model_statusquo_factor <- glm(vote ~ sex + education + statusquo_factor + education:income, 
+                              data = chile_data_clean, 
+                              family = binomial(link = "logit"))
+
+model_statusquo_linear <- glm(vote ~ sex + education + statusquo + education:income, 
+                              data = chile_data_clean, 
+                              family = binomial(link = "logit"))
+
+anova(model_statusquo_linear, model_statusquo_factor, test = "Chisq")
+```
+
+:::
+
+
+(c) Explore the use of the Cauchy and complementary-log-log links as alternatives to the logit link for this regression. Comparing deviances under the different links, which link appears to best represent the data?
+
+::: {.callout-tip icon="false"}
+## Solution
+
+The logit link function emerges as the most suitable option, as it yields the lowest residual deviance and AIC, indicating the best model fit. Additionally, unlike the alternative link functions, all predictors remain statistically significant under the logit model, reinforcing its reliability and robustness.
+
+```{r}
+#cauchy_model <- glm(vote ~ sex + education + statusquo + education:income, 
+                    #data = chile_data, 
+                    #family = binomial(link = "cauchit"))
+
+#cloglog_model <- glm(vote ~ sex + education + statusquo + education:income, 
+                     #data = chile_data_clean, 
+                     #family = binomial(link = "cloglog"))
+```
+
+:::
+
+
+### Exercise D15.1 (Count data)
+
+Long (1990, 1997) investigates factors affecting the research productivity of doctoral students in biochemistry. Long's data (on 915 biochemists) are in the file `Long.txt`. The response variable in this investigation, `art`, is the number of articles published by the student during the last three years of his or her PhD programme. Overview of the explanatory variables are provided in @tbl-long-ex-vars below.
+
+| Variable name   | Definition                                                     |
+|:----------------|:---------------------------------------------------------------|
+| `fem`           | Gender: dummy variable - 1 if female, 0 if male                |
+| `mar`           | Martial status: dummy variable - 1 if married, 0 if not       |
+| `kid5`          | Number of children five years old or younger                   |
+| `phd`           | Prestige rating of PhD department                              |
+| `ment`          | Number of articles published by mentor during last three years |
+
+: Explanatory variables in `long.txt` data {#tbl-long-ex-vars}
+
+```{r}
+# Reading in the data
+long_data <- read.table("data/Long.txt", header = TRUE, sep = "", stringsAsFactors = TRUE)
+```
+
+(a) Examine the distribution of the response variable. Based on this distribution, does it appear promising to model these data by linear least-squares regression, perhaps after transforming the response? Explain your answer.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+The distribution of the response variable, art (number of articles published), is 
+highly right-skewed, with a skewness of 2.52 and a kurtosis of 12.74. This indicates 
+that the data is not normally distributed and contains many low values with a few 
+extreme outliers. Given that linear regression assumes normality of residuals and 
+homoscedasticity, directly using art as the dependent variable may lead to biased 
+estimates and poor model performance. To address this, we applied a log transformation 
+(log(art + 1)), which significantly reduced skewness (0.25) and normalized the 
+distribution. The transformed data appears more symmetrical and better suited for 
+linear regression. Therefore, to model research productivity effectively using 
+linear regression, it is advisable to use the log-transformed art rather than 
+the raw count data.
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+
+# Read the dataset
+long_data <- read.table("data/Long.txt", header = TRUE, sep = "", stringsAsFactors = TRUE)
+
+# Examine the distribution of the response variable (art)
+ggplot(long_data, aes(x = art)) +
+  geom_histogram(bins = 30, fill = "blue", alpha = 0.7, color = "black") +
+  ggtitle("Distribution of Research Productivity (art)") +
+  xlab("Number of Articles Published") +
+  ylab("Frequency") +
+  theme_minimal()
+
+# Calculate skewness and kurtosis
+library(e1071)
+art_skewness <- skewness(long_data$art)
+art_kurtosis <- kurtosis(long_data$art)
+
+# Apply log transformation to reduce skewness
+long_data$log_art <- log1p(long_data$art)
+
+# Plot the transformed distribution
+ggplot(long_data, aes(x = log_art)) +
+  geom_histogram(bins = 30, fill = "green", alpha = 0.7, color = "black") +
+  ggtitle("Distribution of Log-transformed Research Productivity") +
+  xlab("Log-transformed Number of Articles Published") +
+  ylab("Frequency") +
+  theme_minimal()
+
+# Calculate skewness and kurtosis after transformation
+log_art_skewness <- skewness(long_data$log_art)
+log_art_kurtosis <- kurtosis(long_data$log_art)
+
+# Print skewness and kurtosis values
+cat("Original art skewness:", art_skewness, "\n")
+cat("Original art kurtosis:", art_kurtosis, "\n")
+cat("Log-transformed art skewness:", log_art_skewness, "\n")
+cat("Log-transformed art kurtosis:", log_art_kurtosis, "\n")
+```
+:::
+
+
+(b) Following Long, perform a Poisson regression of art on the explanatory variables. What do you conclude from the results of this regression? Be sure to interpret the results.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+The updated Poisson regression model provides new insights into the factors 
+influencing research productivity among PhD students in biochemistry. Mentor 
+productivity (ment) remains the strongest predictor, with a positive and highly 
+significant coefficient (p < 0.001). Each additional article published by a student's 
+mentor is associated with a 3.3% increase in the expected number of articles published 
+by the student (IRR = 1.0329), reinforcing the crucial role of mentorship in academic success.
+
+Gender (fem) continues to show a significant negative effect, with female students 
+publishing approximately 17.5% fewer articles than male students (IRR = 0.8253, p < 0.001). 
+This persistent gender gap suggests potential structural or social factors limiting 
+female students' research output. Marital status (mar) has a positive and marginally 
+significant effect (p = 0.0483), indicating that married students tend to publish 12.4% 
+more articles than unmarried students (IRR = 1.1241). This could be due to increased stability or support from a partner.
+
+A key improvement in this model is the inclusion of the interaction term (ment:kid5), 
+which is negative and highly significant (p < 0.001). The coefficient of -0.0095 
+suggests that the positive effect of mentor productivity is diminished for students 
+with young children. Specifically, for each additional article published by a mentor, 
+students with young children experience a 0.95% smaller increase in their own publication count 
+compared to those without young children (IRR = 0.9905). This finding highlights 
+the potential difficulty of balancing mentorship benefits with childcare responsibilities, 
+suggesting that students with young children may not be able to fully capitalize 
+on mentorship opportunities due to time constraints.
+
+```{r}
+# Fit a Poisson regression model
+poisson_model <- glm(art ~ fem + ment + mar + ment:kid5, 
+                     data = long_data, 
+                     family = poisson(link = "log"))
+
+# Display the summary of the model
+summary(poisson_model)
+
+# Interpret the coefficients by calculating exponentiated values (incidence rate ratios)
+exp(coef(poisson_model))
+```
+
+:::
+
+
+(c) Perform regression diagnostics on the model fit in the previous question. 
+If you identify any problems, try to deal with them. Are the conclusions of the research altered?
+
+::: {.callout-tip icon="false"}
+## Solution
+An influence diagnostics test identified several observations (186, 431, and 467) 
+with high Cook’s distance and leverage values, indicating that these points 
+disproportionately influenced the model’s estimates. To mitigate their effect, 
+we refitted the Negative Binomial model after removing these influential observations, which improved model stability.
+
+```{r}
+influence_measures <- influence.measures(poisson_model)
+summary(influence_measures)
+
+# Cook's Distance Plot to detect influential points
+plot(cooks.distance(poisson_model), type = "h", 
+     main = "Cook's Distance Plot", ylab = "Cook's Distance")
+abline(h = 4/(nrow(long_data)), col = "red", lty = 2)
+
+# Remove highly influential observations and refit the model
+nb_model <- glm.nb(art ~ fem + ment + mar + ment:kid5, data = long_data)
+
+long_data_filtered <- long_data[-c(186, 431, 467), ]
+nb_model_filtered <- glm.nb(art ~ fem + ment + mar + ment:kid5, data = long_data_filtered)
+
+# Display new model summary
+summary(nb_model_filtered)
+```
+
+Initially, the Poisson model showed signs of overdispersion, with a test statistic of 1.81, 
+indicating that the variance exceeded the mean. To address this, we switched to a Negative Binomial model, 
+which effectively accounted for the overdispersion. After removing influential points, 
+the overdispersion statistic improved to 1.037, confirming that the issue was successfully resolved.
+
+
+```{r}
+# Compute the overdispersion statistic
+overdispersion_test <- sum(residuals(poisson_model, type = "pearson")^2) / poisson_model$df.residual
+overdispersion_test  # If >1, overdispersion is present
+
+# After removing influential points, check overdispersion again
+overdispersion_test_filtered <- sum(residuals(nb_model_filtered, type = "pearson")^2) / nb_model_filtered$df.residual
+overdispersion_test_filtered  # Should be close to 1
+```
+
+The Normal Q-Q plot of the residuals showed some deviation in the upper tail, 
+suggesting a mild departure from normality. However, given that Negative Binomial 
+regression does not require perfectly normal residuals, this was not a major concern. 
+The residual diagnostics did not indicate systematic patterns, confirming that the revised model was reasonably well-specified.
+
+
+```{r}
+# Plot Residuals vs. Fitted Values
+plot(fitted(nb_model_filtered), residuals(nb_model_filtered, type = "pearson"),
+     xlab = "Fitted Values", ylab = "Pearson Residuals",
+     main = "Residuals vs. Fitted Values")
+abline(h = 0, col = "red", lty = 2)
+
+# Histogram of Residuals
+hist(residuals(nb_model_filtered, type = "pearson"), 
+     breaks = 30, main = "Histogram of Pearson Residuals", 
+     xlab = "Residuals", col = "blue")
+
+# Q-Q Plot for Residuals
+qqnorm(residuals(nb_model_filtered, type = "pearson"))
+qqline(residuals(nb_model_filtered, type = "pearson"), col = "red", lwd = 2)
+
+```
+
+
+The original model’s AIC was 3136.66, while the updated model’s AIC decreased to 3113.94, confirming an improvement in model fit.
+Furthermore, residual deviance remained stable (1005.12 vs. 1007.79), indicating that 
+removing influential points did not drastically alter model performance or conclusions.
+```{r}
+# Compare AIC before and after removing influential points
+AIC(nb_model, nb_model_filtered)
+
+# Compare residual deviance
+c(nb_model$deviance, nb_model_filtered$deviance)
+```
+
+:::
+
+
+(d) Refit Long's model allowing for overdispersion (using a quasi-Poisson or negative-binomial model). 
+Does this make a difference to the results?
+
+::: {.callout-tip icon="false"}
+## Solution
+Refitting Long’s model using methods that account for overdispersion confirms that 
+our key findings remain robust. The Negative Binomial and Quasi-Poisson models produce 
+nearly identical coefficient estimates, indicating consistent relationships between 
+research productivity and its predictors. However, the Quasi-Poisson model yields 
+slightly larger standard errors, suggesting that the original Poisson model underestimated 
+variability. Despite this, all significant predictors remain significant, meaning 
+the conclusions of the research do not change.
+
+The Negative Binomial model is preferred, as its AIC (3113.94) suggests a better overall fit, 
+while the Quasi-Poisson model lacks an AIC for comparison. In both models, mentorship 
+remains the strongest predictor of research productivity, female students publish 
+significantly fewer articles than male students, and students with young children 
+benefit less from mentorship. Marital status remains insignificant, indicating 
+it does not affect research productivity.
+
+Overall, while addressing overdispersion slightly impacts standard errors, 
+the fundamental conclusions remain unchanged. Given its superior model fit and 
+explicit handling of overdispersion, the Negative Binomial model is the most 
+appropriate choice for this analysis
+
+```{r}
+# Fit a Quasi-Poisson model
+quasi_poisson_model <- glm(art ~ fem + ment + mar + ment:kid5, 
+                           data = long_data_filtered, 
+                           family = quasipoisson(link = "log"))
+
+# Display the summary of the Quasi-Poisson model
+summary(quasi_poisson_model)
+
+# Compare coefficient estimates and standard errors
+coef_comparison <- data.frame(
+  Variable = names(coef(nb_model_filtered)),
+  NB_Coefficients = coef(nb_model_filtered),
+  NB_StdErrors = summary(nb_model_filtered)$coefficients[,2],
+  QuasiPoisson_Coefficients = coef(quasi_poisson_model),
+  QuasiPoisson_StdErrors = summary(quasi_poisson_model)$coefficients[,2]
+)
+
+print(coef_comparison)
+
+# Compare AIC (only available for Negative Binomial)
+AIC(nb_model_filtered)
+
+```
+
+:::
+
